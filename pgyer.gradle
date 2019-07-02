@@ -1,0 +1,49 @@
+//蒲公英上传脚本
+task pgyer(type: Exec) {
+
+    String apiKey = "acdff1106826dfcf58cdcca2993a8d94" // todo 这里替换为自己的蒲公英的apiKey
+    String userKey = "0b8161bd49c520e98c65c820895568a5" // todo 这里替换为自己的蒲公英的userKey
+    String desc = getGitLog()
+
+    if (project.hasProperty("pgyerDesc")) {
+        desc = pgyerDesc + "\n" + desc
+    }
+    if (desc == null || desc.isEmpty()) {
+        desc = "保持沉默"
+    }
+
+    commandLine 'curl'
+    args '-k', 'http://www.pgyer.com/apiv1/app/upload',
+            '-F', "uKey=${userKey}",
+            '-F', "_api_key=${apiKey}",
+            '-F', "file=@${getApkPath()}",
+            '-F', "updateDescription=${desc}"
+}
+
+
+def getGitLog() {
+    return 'git log --pretty=format:"%s___in___%ad___by___%an" -10 --date=format:%c'.execute().text
+}
+
+def getApkPath() {
+    String buildType = getBuildType().toLowerCase()
+    String path = new File(buildDir, "outputs/apk/${buildType}/app-${buildType}.apk").absolutePath
+    println("path=" + path)
+    return path
+}
+
+def getBuildType() {
+    Gradle gradle = getGradle()
+    String args = gradle.getStartParameter().getTaskRequests().toString()
+    println(args)
+    if (args.contains("assembleRelease")) {
+        return "Release"
+    } else if (args.contains("assembleDebug")) {
+        return "Debug"
+    }
+    return "Debug"
+}
+
+// app模块添加 apply from: "../pgyer.gradle"
+//  gradlew assembleRelease pgyer -P pgyerDesc="描述"
+//  gradlew assembleDebug pgyer -P pgyerDesc="描述"
